@@ -1,5 +1,5 @@
 // Before running ths, we need:
-// npm install flatbush geographiclib minimist progress
+// npm install flatbush progress geographiclib minimist
 //
 const Flatbush = require('flatbush');
 const fs = require('fs');
@@ -14,6 +14,7 @@ function createIndexFromFile(filename) {
     const count = contents.features.length;
     const index = new Flatbush(count);
     const data = new Array(count);
+    const name = filename.split('.')[0];
 
     const bar = new ProgressBar(`Loading ${filename} [:bar] :rate/pps :percent :etas (${count} items)`, {
         complete: '=',
@@ -32,6 +33,7 @@ function createIndexFromFile(filename) {
     index.finish();
 
     return {
+        name,
         index,
         data
     }
@@ -57,7 +59,20 @@ function best(x, y, items) {
     return best_item;
 }
 
-function nn(){
+function getTargetDistance(target, meanX, meanY, candidates, c) {
+    const all = target.index.neighbors(meanX, meanY, candidates).map(i => target.data[i]);
+    const theBest = best(c.x, c.y, all);
+    const dist = distance(meanY, meanX, theBest.y, theBest.x);
+    return {
+        [`new_${target.name}_distance_centroid`] : dist,
+        [`new_${target.name}_x`] : theBest.x,
+        [`new_${target.name}_y`] : theBest.y,
+        [`new_${target.name}_class`] : theBest["class"]
+    };
+}
+
+
+(function (){
     const d = 0.00045;
     // half-line distance
     // d=100 m,
@@ -69,32 +84,24 @@ function nn(){
     // read file
     const cluster500 = createIndexFromFile(args.c);
 
-    const targets = {}
-
-    for (let target of args.t) {
-        targets[target.replace('.geojson','')] = createIndexFromFile(target);
-    }
+    const targets = args.t.map(createIndexFromFile);
 
     const region_population = {};
-
-    let pbar = new ProgressBar('Loading population [:bar] :rate/pps :percent :etas', {
+    const pbar = new ProgressBar('Loading population [:bar] :rate/pps :percent :etas', {
             complete: '=',
             incomplete: ' ',
             width: 40,
             total: regions.features.length
     });
-
     for (let i = 0; i < regions.features.length; i++){
         pbar.tick(1);
         let w = regions.features[i].properties;
         region_population[w.W_CODE] = {code: w.W_CODE, population: w.Pop2007, density: w.Density, area: w.Area};
     }
 
-
-
-    let dataLength = cluster500.data.length;
-    let clusters = [];
-    let bar = new ProgressBar('Processing clusters [:bar] :rate/pps :percent :etas', {
+    const dataLength = cluster500.data.length;
+    const clusters = [];
+    const bar = new ProgressBar('Processing clusters [:bar] :rate/pps :percent :etas', {
         complete: '=',
         incomplete: ' ',
         width: 40,
@@ -105,42 +112,29 @@ function nn(){
         bar.tick(1);
         let c = cluster500.data[i];
 
-    	let meanX = c.x;
+        let meanX = c.x;
         let meanY = c.y;
 
-        let candidates = 10;
-        let n = {};
+        const candidates = 10;
 
-	for (let target of targets) {
-           let t_all = target..index.neighbors(meanX, meanY, candidates).map((i) => target.data[i]);
-	   let t = best(c.x, c.y, t_all);
-	   let t_dist = distance(meanY, meanX, t.y, t.x);
-           let t_info = {
-            ??_x: t.x,
-            ??_y: t.y,
-            ??_distance_centroid: t_dist,
-            ??_class: t["class"],
-           };
-           n = {...n, ...t_info};
-	}
-
+        const distList = targets.map(target => getTargetDistance(target, meanX, meanY, candidates, c))
+        const n = Object.assign({}, ...distList);
 
         let w = region_population[c.region];
-    	let p ={};
+        let p = {};
 
-    	if (w){
-       	    p = {
-        	    region_population: region_population[c.region].population,
-        	    region_area: region_population[c.region].area,
-        	    region_density: region_population[c.region].density,
+        if (w){
+            p = {
+                region_population: region_population[c.region].population,
+                region_area: region_population[c.region].area,
+                region_density: region_population[c.region].density,
             }
         }
+
         clusters.push({...c,...n,...p});
     }
 
+    console.log(`Total clusters: ${clusters.length}`);
 
-	// write clusters as features on a geojson object.
-	fs.writeFileSync(args.o, ??);
-}
-
-nn();
+    fs.writeFileSync(args.o, JSON.stringify(clusters) );
+})();

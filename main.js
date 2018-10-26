@@ -1,7 +1,6 @@
 // Before running ths, we need:
 // npm install flatbush geographiclib minimist progress
 //
-const papa = require('papaparse');
 const Flatbush = require('flatbush');
 const fs = require('fs');
 const ProgressBar = require('progress');
@@ -139,8 +138,9 @@ function nn(){
         clusters.push({...c,...n,...p});
     }
 
-	let csv = papa.unparse(clusters)
-	fs.writeFileSync(args.o, csv);
+
+	// write clusters as features on a geojson object.
+	fs.writeFileSync(args.o, ??);
 }
 
 nn();

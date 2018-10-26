@@ -6,8 +6,9 @@ const Flatbush = require('flatbush');
 const fs = require('fs');
 const ProgressBar = require('progress');
 const GeographicLib = require('geographiclib');
+const args = require('minimist')(process.argv.slice(2));
 
-const regions = JSON.parse(fs.readFileSync('./regions.geojson'));
+const regions = JSON.parse(fs.readFileSync(args.r));
 
 function createIndexFromFile(filename) {
     let contents =  JSON.parse(fs.readFileSync(filename));
@@ -68,22 +69,15 @@ function nn(){
     // const dy = 0.0063; // 0.7 km lat
 
     // read file
-    let cluster500 = createIndexFromFile('population.geojson');
-    
-    let grid = createIndexFromFile('grid.geojson');
+    const cluster500 = createIndexFromFile(args.c);
 
-    let school = createIndexFromFile('schools.geojson');
+    const targets = {}
 
-    let health = createIndexFromFile('health.geojson');
+    for (let target of args.t) {
+        targets[target.replace('.geojson','')] = createIndexFromFile(target);
+    }
 
-    let road1 = createIndexFromFile('roads1.geojson');
-
-    let road2= createIndexFromFile('roads2.geojson');
-
-    let road3 = createIndexFromFile('roads3.geojson');
-
-
-    var region_population = {};
+    const region_population = {};
 
     let pbar = new ProgressBar('Loading population [:bar] :rate/pps :percent :etas', {
             complete: '=',
@@ -118,12 +112,12 @@ function nn(){
 
         let candidates = 10;
 
-        let g_all = grid.index.neighbors(meanX, meanY, candidates).map((i) => grid.data[i]);
-        let s_all = school.index.neighbors(meanX, meanY, candidates).map((i) => school.data[i]);
-        let h_all = health.index.neighbors(meanX, meanY, candidates).map((i) => health.data[i]);
-        let r1_all = road1.index.neighbors(meanX, meanY, candidates).map((i) => road1.data[i]);
-        let r2_all = road2.index.neighbors(meanX, meanY, candidates).map((i) => road2.data[i]);
-        let r3_all = road3.index.neighbors(meanX, meanY, candidates).map((i) => road3.data[i]);
+        let g_all = targets.grid.index.neighbors(meanX, meanY, candidates).map((i) => targets.grid.data[i]);
+        let s_all = targets.schools.index.neighbors(meanX, meanY, candidates).map((i) => targets.schools.data[i]);
+        let h_all = targets.health.index.neighbors(meanX, meanY, candidates).map((i) => targets.health.data[i]);
+        let r1_all = targets.roads1.index.neighbors(meanX, meanY, candidates).map((i) => targets.roads1.data[i]);
+        let r2_all = targets.roads2.index.neighbors(meanX, meanY, candidates).map((i) => targets.roads2.data[i]);
+        let r3_all = targets.roads3.index.neighbors(meanX, meanY, candidates).map((i) => targets.roads3.data[i]);
 
 	let g = best(c.x, c.y, g_all);
         let s = best(c.x, c.y, s_all);
@@ -135,7 +129,7 @@ function nn(){
         let w = region_population[c.region];
     	let p ={};
 
-    	if (w != undefined){
+    	if (w){
        	    p = {
         	    region_population: region_population[c.region].population,
         	    region_area: region_population[c.region].area,
@@ -209,7 +203,7 @@ function nn(){
     let min_road2_error = Math.min(...clusters.map( i => i.new_road2_error));
     let max_road3_error = Math.max(...clusters.map( i => i.new_road3_error));
     let min_road3_error = Math.min(...clusters.map( i => i.new_road3_error));
-    
+
     console.log("Grid error (max, min):",  max_grid_error, min_grid_error);
     console.log("School error (max, min):",  max_school_error, min_school_error);
     console.log("Health error (max, min):",  max_health_error, min_health_error);
@@ -218,7 +212,7 @@ function nn(){
     console.log("Road 3 error (max, min):",  max_road3_error, min_road3_error);
 
 	let csv = papa.unparse(clusters)
-	fs.writeFileSync(`annotated_clusters.csv`, csv);
+	fs.writeFileSync(args.o, csv);
 }
 
 nn();

@@ -11,12 +11,12 @@ const args = require('minimist')(process.argv.slice(2));
 const regions = JSON.parse(fs.readFileSync(args.r));
 
 function createIndexFromFile(filename) {
-    let contents =  JSON.parse(fs.readFileSync(filename));
-    let count = contents.features.length;
-    let index = new Flatbush(count);
-    let data = new Array(count);
+    const contents =  JSON.parse(fs.readFileSync(filename));
+    const count = contents.features.length;
+    const index = new Flatbush(count);
+    const data = new Array(count);
 
-    let bar = new ProgressBar(`Loading ${filename} [:bar] :rate/pps :percent :etas (${count} items)`, {
+    const bar = new ProgressBar(`Loading ${filename} [:bar] :rate/pps :percent :etas (${count} items)`, {
         complete: '=',
         incomplete: ' ',
         width: 40,
@@ -36,27 +36,26 @@ function createIndexFromFile(filename) {
         index,
         data
     }
-
 }
 
-const geod = GeographicLib.Geodesic.WGS84;
-
 function distance(lat1, lon1, lat2, lon2){
-   let r = geod.Inverse(lat1, lon1, lat2, lon2);
-   return Number(r.s12.toFixed(3));
+    const geod = GeographicLib.Geodesic.WGS84;
+    const r = geod.Inverse(lat1, lon1, lat2, lon2);
+    return Number(r.s12.toFixed(3));
 }
 
 function best(x, y, items) {
-  let best_item = items[0];
-  let best_d = distance(y, x, best_item.y, best_item.x);
-  for (let i=0; i < items.length; i++ ) {
-    let new_d = distance(y, x, items[i].y, items[i].x);
-    if (new_d < best_d) {
-      best_d = new_d;
-      best_item = items[i];
+    let best_item = items[0];
+    let best_d = distance(y, x, best_item.y, best_item.x);
+
+    for (let i=0; i < items.length; i++ ) {
+        let new_d = distance(y, x, items[i].y, items[i].x);
+        if (new_d < best_d) {
+            best_d = new_d;
+            best_item = items[i];
+        }
     }
-  }
- return best_item;
+    return best_item;
 }
 
 function nn(){
@@ -138,53 +137,53 @@ function nn(){
         }
 
 	let g_dist = distance(meanY, meanX, g.y, g.x);
-        let s_dist = distance(meanY, meanX, s.y, s.x);
-        let h_dist = distance(meanY, meanX, h.y, h.x);
+    let s_dist = distance(meanY, meanX, s.y, s.x);
+    let h_dist = distance(meanY, meanX, h.y, h.x);
 	let r1_dist = distance(meanY, meanX, r1.y, r1.x);
 	let r2_dist = distance(meanY, meanX, r2.y, r2.x);
 	let r3_dist = distance(meanY, meanX, r3.y, r3.x);
 
 	let g_error = g_dist - c.DstToLn;
-        let s_error = s_dist - c.DstToSchoo;
-        let h_error = h_dist - c.DstToHlth;
+    let s_error = s_dist - c.DstToSchoo;
+    let h_error = h_dist - c.DstToHlth;
 	let r1_error = r1_dist - c.DstToRd_1;
 	let r2_error = r2_dist - c.DstToRd_2;
 	let r3_error = r3_dist - c.DstToRd_3;
 
 
         let n = {
-	    new_grid_x: g.x,
+            new_grid_x: g.x,
             new_grid_y: g.y,
     	    new_school_x: s.x,
     	    new_school_y: s.y,
     	    new_health_x: h.x,
     	    new_health_y: h.y,
     	    new_health_x: h.x,
-	    new_road1_x: r1.x,
+            new_road1_x: r1.x,
     	    new_road1_y: r1.y,
     	    new_road2_x: r2.x,
     	    new_road2_y: r2.y,
     	    new_road3_x: r3.x,
     	    new_road3_y: r3.y,
-	    new_grid_distance_centroid: g_dist,
-    	    new_school_distance_centroid: s_dist,
-    	    new_health_distance_centroid: h_dist,
-    	    new_road1_distance_centroid: r1_dist,
-    	    new_road2_distance_centroid: r2_dist,
-    	    new_road3_distance_centroid: r3_dist,
-	    new_grid_error: g_error,
+            new_grid_distance_centroid: g_dist,
+            new_school_distance_centroid: s_dist,
+            new_health_distance_centroid: h_dist,
+            new_road1_distance_centroid: r1_dist,
+            new_road2_distance_centroid: r2_dist,
+            new_road3_distance_centroid: r3_dist,
+            new_grid_error: g_error,
             new_school_error:  s_error,
             new_health_error:  h_error,
-	    new_road1_error: r1_error,
-	    new_road2_error: r2_error,
-	    new_road3_error: r3_error,
-	    new_grid_class: g["class"],
+            new_road1_error: r1_error,
+            new_road2_error: r2_error,
+            new_road3_error: r3_error,
+            new_grid_class: g["class"],
             new_school_class: s["class"],
     	    new_health_class: h["class"],
     	    new_road1_class: r1["class"],
     	    new_road2_class: r2["class"],
     	    new_road3_class: r3["class"],
-            }
+        }
 
         clusters.push({...c,...n,...p});
     }

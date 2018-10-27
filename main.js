@@ -93,9 +93,10 @@ function getTargetDistance(target, meanX, meanY, candidates, c) {
             width: 40,
             total: regions.features.length
     });
-    for (let i = 0; i < regions.features.length; i++){
+
+    for (feature of regions.features) {
         pbar.tick(1);
-        let w = regions.features[i].properties;
+        let w = feature.properties;
         region_population[w.W_CODE] = {code: w.W_CODE, population: w.Pop2007, density: w.Density, area: w.Area};
     }
 
@@ -110,18 +111,18 @@ function getTargetDistance(target, meanX, meanY, candidates, c) {
 
     for(let i = 0; i < dataLength; ++i) {
         bar.tick(1);
-        let c = cluster500.data[i];
+        const c = cluster500.data[i];
 
-        let meanX = c.x;
-        let meanY = c.y;
+        const meanX = c.x;
+        const meanY = c.y;
 
         const candidates = 10;
 
         const distList = targets.map(target => getTargetDistance(target, meanX, meanY, candidates, c))
         const n = Object.assign({}, ...distList);
 
-        let w = region_population[c.region];
-        let p = {};
+        const w = region_population[c.region];
+        const p = {};
 
         if (w){
             p = {

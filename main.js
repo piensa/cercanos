@@ -7,8 +7,6 @@ const ProgressBar = require('progress');
 const GeographicLib = require('geographiclib');
 const args = require('minimist')(process.argv.slice(2));
 
-const regions = JSON.parse(fs.readFileSync(args.r));
-
 function createIndexFromFile(filename) {
     const contents =  JSON.parse(fs.readFileSync(filename));
     const count = contents.features.length;
@@ -26,8 +24,12 @@ function createIndexFromFile(filename) {
     for (let [currentIndex, feature] of contents.features.entries()) {
         bar.tick(1);
         let d = feature.properties;
+	let x = feature.geometry.coordinates[0];
+	let y = feature.geometry.coordinates[1];
+	d.x = x;
+	d.y = y;
         data[currentIndex] = d;
-        index.add(d.x, d.y, d.x, d.y);
+        index.add(d, d, x, y);
     }
 
     index.finish();
@@ -64,10 +66,10 @@ function getTargetDistance(target, meanX, meanY, candidates, c) {
     const theBest = best(c.x, c.y, all);
     const dist = distance(meanY, meanX, theBest.y, theBest.x);
     return {
-        [`new_${target.name}_distance_centroid`] : dist,
-        [`new_${target.name}_x`] : theBest.x,
-        [`new_${target.name}_y`] : theBest.y,
-        [`new_${target.name}_class`] : theBest["class"]
+        [`${target.name}dst`] : dist,
+        [`${target.name}x`] : theBest.x,
+        [`${target.name}y`] : theBest.y,
+        [`${target.name}cat`] : theBest["cat"]
     };
 }
 
@@ -86,20 +88,6 @@ function getTargetDistance(target, meanX, meanY, candidates, c) {
 
     const targets = args.t.map(createIndexFromFile);
 
-    const region_population = {};
-    const pbar = new ProgressBar('Loading population [:bar] :rate/pps :percent :etas', {
-            complete: '=',
-            incomplete: ' ',
-            width: 40,
-            total: regions.features.length
-    });
-
-    for (feature of regions.features) {
-        pbar.tick(1);
-        let w = feature.properties;
-        region_population[w.W_CODE] = {code: w.W_CODE, population: w.Pop2007, density: w.Density, area: w.Area};
-    }
-
     const dataLength = cluster500.data.length;
     const clusters = [];
     const bar = new ProgressBar('Processing clusters [:bar] :rate/pps :percent :etas', {
@@ -116,26 +104,26 @@ function getTargetDistance(target, meanX, meanY, candidates, c) {
         const meanX = c.x;
         const meanY = c.y;
 
-        const candidates = 10;
+        const candidates = 15;
 
         const distList = targets.map(target => getTargetDistance(target, meanX, meanY, candidates, c))
         const n = Object.assign({}, ...distList);
 
-        const w = region_population[c.region];
-        const p = {};
-
-        if (w){
-            p = {
-                region_population: region_population[c.region].population,
-                region_area: region_population[c.region].area,
-                region_density: region_population[c.region].density,
-            }
-        }
-
-        clusters.push({...c,...n,...p});
+	const properties = {...c, ...n};
+	const feature = { type: "Feature",
+		          properties: properties,
+		          geometry: {
+		                  type: "Point",
+				  coordinates: [c.x, c.y ]
+			  },
+	                }
+        clusters.push(feature);
     }
 
     console.log(`Total clusters: ${clusters.length}`);
-
-    fs.writeFileSync(args.o, JSON.stringify(clusters) );
+    let out = {
+       type: "FeatureCollection",
+       features: clusters
+    }
+    fs.writeFileSync(args.o, JSON.stringify(out) );
 })();
